@@ -59,7 +59,6 @@ pipeline {
                 }
             }
         }
-    }
 
 
         stage('Fetch SonarQube Metrics') {
