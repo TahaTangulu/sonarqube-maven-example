@@ -61,15 +61,30 @@ pipeline {
         }
     }
 
+
+        stage('Fetch SonarQube Metrics') {
+            steps {
+                script {
+                    // SonarQube API'den metrikleri al
+                    def metrics = 'bugs,vulnerabilities,code_smells'
+                    def sonarMetrics = sh(script: "curl -u ${SONARQUBE_TOKEN}: '${SONARQUBE_HOST}/api/measures/component?component=${SONARQUBE_PROJECT_KEY}&metricKeys=${metrics}'", returnStdout: true).trim()
+                    env.SONAR_METRICS = sonarMetrics
+                }
+            }
+        }
+    }
+
     post {
         always {
             script {
-                // SonarQube Quality Gate durumunu almak
+                // SonarQube Quality Gate ve metrik sonuçlarını al
                 def qg = currentBuild.rawBuild.result
+                def metrics = env.SONAR_METRICS ?: 'Metrikler alınamadı'
+
                 // E-posta gönder
                 mail to: "${EMAIL_RECIPIENTS}",
-                     subject: "SonarQube Quality Gate Durumu: ${qg}",
-                     body: "SonarQube Quality Gate sonucu: ${qg}\nPipeline Logları için Jenkins'e bakın."
+                     subject: "SonarQube Raporu - ${qg}",
+                     body: "SonarQube Quality Gate sonucu: ${qg}\nSonarQube Metrikleri:\n${metrics}\nPipeline Logları için Jenkins'e bakın."
             }
             echo 'Pipeline execution complete!'
         }
