@@ -84,3 +84,4 @@ pipeline {
                  body: "Pipeline sırasında bir hata oluştu. Lütfen Jenkins loglarına bakınız."
         }
     }
+}
