@@ -5,6 +5,7 @@ pipeline {
         PATH = "$PATH:$HOME/.dotnet/tools"
         SONARQUBE_HOST = 'http://192.168.176.24:9000'
         SONARQUBE_TOKEN = 'sqp_104bdde603f13ded777f0e840264dc6dcf6177aa'
+        EMAIL_RECIPIENTS = 'taha.tangulu@virgosol.com'
     }
     triggers {
         pollSCM('H/5 * * * *')
@@ -49,14 +50,39 @@ pipeline {
 
         stage('SonarQube Quality Gate') {
             steps {
-                echo 'SonarQube Quality Gate complete!'
+                waitForQualityGate abortPipeline: true
+            }
+        }
+    }
+
+        stage('Fetch SonarQube Metrics') {
+            steps {
+                script {
+                    // SonarQube API'den metrikleri al
+                    def metrics = 'bugs,vulnerabilities,code_smells'
+                    def sonarMetrics = sh(script: "curl -u ${SONARQUBE_TOKEN}: '${SONARQUBE_HOST}/api/measures/component?component=${SONARQUBE_PROJECT_KEY}&metricKeys=${metrics}'", returnStdout: true).trim()
+                    env.SONAR_METRICS = sonarMetrics
+                }
             }
         }
     }
 
     post {
         always {
+            script {
+                def qg = currentBuild.rawBuild.result
+                def metrics = env.SONAR_METRICS ?: 'Metrikler alınamadı'
+
+                mail to: "${EMAIL_RECIPIENTS}",
+                     subject: "SonarQube Raporu - ${qg}",
+                     body: "SonarQube Quality Gate sonucu: ${qg}\nSonarQube Metrikleri:\n${metrics}\nPipeline Logları için Jenkins'e bakın."
+            }
             echo 'Pipeline execution complete!'
+        }
+        failure {
+            mail to: "${EMAIL_RECIPIENTS}",
+                 subject: "Pipeline Hatası",
+                 body: "Pipeline sırasında bir hata oluştu. Lütfen Jenkins loglarına bakınız."
         }
     }
 }
