@@ -58,7 +58,6 @@ pipeline {
         stage('Fetch SonarQube Metrics') {
             steps {
                 script {
-                    // SonarQube API'den metrikleri al
                     def metrics = 'bugs,vulnerabilities,code_smells'
                     def sonarMetrics = sh(script: "curl -u ${SONARQUBE_TOKEN}: '${SONARQUBE_HOST}/api/measures/component?component=${SONARQUBE_PROJECT_KEY}&metricKeys=${metrics}'", returnStdout: true).trim()
                     env.SONAR_METRICS = sonarMetrics
