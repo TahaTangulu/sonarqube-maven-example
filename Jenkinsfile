@@ -50,30 +50,26 @@ pipeline {
 
         stage('SonarQube Quality Gate') {
             steps {
-                waitForQualityGate abortPipeline: true
+                script {
+                    def qg = waitForQualityGate() // Quality Gate sonucunu bekler
+                    if (qg.status != 'OK') {
+                        currentBuild.result = 'FAILURE'
+                        error "Quality Gate failed: ${qg.status}"
+                    }
+                }
             }
         }
     }
 
-        stage('Fetch SonarQube Metrics') {
-            steps {
-                script {
-                    def metrics = 'bugs,vulnerabilities,code_smells'
-                    def sonarMetrics = sh(script: "curl -u ${SONARQUBE_TOKEN}: '${SONARQUBE_HOST}/api/measures/component?component=${SONARQUBE_PROJECT_KEY}&metricKeys=${metrics}'", returnStdout: true).trim()
-                    env.SONAR_METRICS = sonarMetrics
-                }
-            }
-        }
-
     post {
         always {
             script {
+                // SonarQube Quality Gate durumunu almak
                 def qg = currentBuild.rawBuild.result
-                def metrics = env.SONAR_METRICS ?: 'Metrikler alınamadı'
-
+                // E-posta gönder
                 mail to: "${EMAIL_RECIPIENTS}",
-                     subject: "SonarQube Raporu - ${qg}",
-                     body: "SonarQube Quality Gate sonucu: ${qg}\nSonarQube Metrikleri:\n${metrics}\nPipeline Logları için Jenkins'e bakın."
+                     subject: "SonarQube Quality Gate Durumu: ${qg}",
+                     body: "SonarQube Quality Gate sonucu: ${qg}\nPipeline Logları için Jenkins'e bakın."
             }
             echo 'Pipeline execution complete!'
         }
